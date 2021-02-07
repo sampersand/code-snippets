@@ -24,5 +24,4 @@ def divide(lhs, rhs)
     lhs / rhs
 end
 
-
-p divide(3, 0)
+p divide(3, 0) # => nil
