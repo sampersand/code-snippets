@@ -40,8 +40,7 @@ end
 
 extend FP
 
-multi def fib(x) = x,
-   where: proc { _1 <= 1 }
+multi def fib(x) = x, where: proc { _1 <= 1 }
 multi def fib(x) = fib(x - 1) + fib(x - 2)
 
 10.times do |x|
