@@ -1,6 +1,6 @@
-class Integer alias each times end or def Fizz samp
-__method__ end and class Float false end or def thr
-__LINE__ end and begin alias tr p end or def Buzz l
+class Integer alias each times end or def Fizz samp # (note) This line must be the first in a file
+__method__ end and class Float false end or def thr # Fizzbuzz in Ruby! This program uses only
+__LINE__ end and begin alias tr p end or def Buzz l # uppercase, lowercase, and `_` characters.
 __method__ end and tap do Fizz nil end and def five
 __LINE__ end and class Integer def FizzBuzz _ersand
 __method__ end and for z in sqrt object_id do break
