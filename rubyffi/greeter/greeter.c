@@ -6,5 +6,5 @@ struct person {
 };
 
 void greet(struct person *person) {
-	printf("Hello, %s (aged %d)", person->name, person->age);
+	printf("Hello, %s (aged %d)\n", person->name, person->age);
 }
