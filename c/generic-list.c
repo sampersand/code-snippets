@@ -11,8 +11,8 @@ typedef struct list_name {                                                     \
 } list_name;                                                                   \
                                                                                \
 list_name *list_name##_alloc(size_t cap) {                                     \
-	list_name *list;                                                           \
-	if (!(list = malloc(sizeof(list_name)))) abort();                          \
+    list_name *list;                                                           \
+    if (!(list = malloc(sizeof(list_name)))) abort();                          \
     if (!(list->eles = malloc(sizeof(kind) * cap))) abort();                   \
     list->len = 0;                                                             \
     list->cap = cap;                                                           \
@@ -20,13 +20,13 @@ list_name *list_name##_alloc(size_t cap) {                                     \
 }                                                                              \
                                                                                \
 void list_name##_free(list_name *list) {                                       \
-	size_t i;                                                                  \
+    size_t i;                                                                  \
     for (i = 0; i < list->len; ++i) free_fn(list->eles + i);                   \
     free(list);                                                                \
 }                                                                              \
                                                                                \
 void list_name##_resize(list_name *list, size_t cap) {                         \
-	size_t i;                                                                  \
+    size_t i;                                                                  \
     if (list->len > cap) {                                                     \
         for (i = cap; i < list->len; ++i) free_fn(list->eles + i);             \
         list->len = cap;                                                       \
@@ -53,7 +53,7 @@ void list_name##_insert(list_name *list, size_t idx, kind ele)  {              \
 }                                                                              \
                                                                                \
 kind list_name##_delete(list_name *list, size_t idx) {                         \
-	kind result, *ptr;                                                         \
+    kind result, *ptr;                                                         \
     assert(idx < list->len);                                                   \
     if (idx == list->len) return list_name##_pop(list);                        \
     result = list->eles[idx]; ptr=list->eles + idx;                            \
@@ -66,7 +66,7 @@ LIST_DEFINE(int, int_list, LIST_NOFREE);
 #include <stdio.h>
 
 int main () {
-	size_t i;
+    size_t i;
     struct int_list *list;
 
     list = int_list_alloc(4);
