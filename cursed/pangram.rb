@@ -9,11 +9,12 @@ Make it cursed.
 =end of the prompt
 
 END{p$====032}
-BEGIN{$_=$0.tr *%w*A-Z a-z*; sub $&,%  while /\W|\d|_/; $stdin=StringIO.new$_}
+BEGIN{$0="the quick brown fox jumps over the lazy dog" }
+BEGIN{$_=$0.tr *%w*A-Z a-z*;sub$&,%%%while/\W|\d|_/; $stdin=StringIO.new$_}
 
 eval <<'''$==0''' if 2..2
-alias$=$-2
-BEGIN{ def ($stdin=$F.sort).gets = shift }
+alias$=$-_
+def ($stdin=$F.sort).gets = shift
 
 $=+=1if%r
 #{[0D97+$=].pack ?C}
