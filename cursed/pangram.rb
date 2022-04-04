@@ -31,3 +31,5 @@ let's take the first two (non-shebang/comment) lines alone:
 - using `Kernel#sub`
 - using `%<space><space>` as an empty string
 - regex in conditions (`/\W|\d/`)
+
+# BEGIN{$0="the quick brown fox jumps over the lazy dog"}

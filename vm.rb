@@ -101,13 +101,14 @@ end
 
 def local(index) = index # just a noop to make life easier
 
-=begin
-i = 0
 
-do { 
-	i = i + 1
-} while i != 10
-=end
+# i = 0
+# 
+# do { 
+# 	i = i + 1
+# } while i != 10
+# 
+# print i
 op :load_const, const(0), local(0)             # l0 = 0
 
 while_loop_top = @code.length                  # while_loop_top:
