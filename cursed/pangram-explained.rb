@@ -38,17 +38,18 @@ BEGIN{
 
   # There's quite a bit to unpack here. This statement is simply removing all non-letters from the
   # input. That way, `$_` will only contain letters. This expression can be expanded out to:
-  #   while $_ =~ /\W|\d|_/
+  #   while $_ =~ /[[:alpha:]]/
   #     $_.sub! $&, ""
   #   end
   # Let's go over the expansions one at a time:
+  # - `/[[:alpha:]]/` uses POSIX bracket expressions. This is equivalent to `[a-zA-Z]`.
   # - `while`s, if given a regex literal, will interpret their condition as matching against the
   #   `$_` variable. That is, `while /x/` is the same as `while $_ =~ /x/`. (`$_` was set in the
   #    previous line). `String#=~`'s return value is `nil` if the regex doesn't match, so this
-  #    will only stop when the input doesn't match `/\W|\d|_/`---i.e., it is all ascii letters.
-  # - `%%%` Is, once again, abusing the `%` literal syntax, taking advantage of the fact that _any_
-  #   non-word character can be the delim. In this case, we use `%` itself. Additionally, if no
-  #   "type" is supplied with `%` literals, it's assumed to be a string. So `%%%` is actually the
+  #    will only stop when the input doesn't match `/[[:alpha:]]/`---i.e., it is all ascii letters.
+  # - `%  ` Is, once again, abusing the `%` literal syntax, taking advantage of the fact that _any_
+  #   non-word character can be the delim. In this case, we use ` ` itself. Additionally, if no
+  #   "type" is supplied with `w` literals, it's assumed to be a string. So `%  ` is actually the
   #   same as `%()`, which is an empty string.
   # - `$&` is a special variable that's set when matching against regexps. When a regex is matched,
   #   the entire matched string is set to the variable `$&`. In this case, it means the non-letter
@@ -56,7 +57,7 @@ BEGIN{
   # - `sub` is a function that's only defined if the `-n` or `-p` flags are supplied, and is the
   #   same as `$_.sub!`. In this case, it's `$_.sub!($&, "")`, which will replace the first instance
   #   of the non-letter with an empty string, thus removing it from `$_`.
-  sub $&, %%% while /\W|\d|_/
+  sub $&, %  while /[[:alpha:]]/
 
   # The `-n` flag actually pulls from `$stdin` after all `BEGIN`s are executed. So, by using the
   # `StringIO`, we can change the stdin to be the value of `$_`--that is, the stripped input string.
@@ -92,8 +93,7 @@ BEGIN{
 #   values: once the `lhs` is true, the condition will always be true (regardless of whether `lhs`
 #   becomes false in the meantime) until `rhs` becomes true, at which point the flipflop "resets"
 #   and waits for the `lhs` to become true again. (There's two variants, `..` and `...`; the
-#   difference being `..` will execute its body if both `lhs` and `rhs` become true at the same
-#   time, whereas `...` will not.)
+#   difference being `...` will check `rhs` the first time `lhs` becomes true, whereas `..` will.)
 #
 #   In the spirit of weirdness, I used an almost entirely unknown feature of this unknown feature of
 #   ruby---using integer literals in flipflops. If you use an integer literal instead of a normal
@@ -151,15 +151,41 @@ def ($stdin=$F.sort).gets = shift
 
 # And now we get to the last part, the actual checking to see if the input is a pangram. The
 # following three lines can be reduced down to:
-#   if /#{(97+$=).chr}/
+#   if $_ =~ /#{(97+$=).chr}/
 #      $= += 1
 #   end
-# 
+# Let's break it down:
+# - `1if` The ruby parser technically allows integer literals immediately before keywords for some
+#   reason. We abuse that here to make the code look funkier.
+# - `%r...nonissue` Once again, we take advantage of `%` literals. Like before, any delim can be
+#   used, so this time we use newlines: The first newline (immediately after the `%r` is the start
+#   of the regex literal, and the second one (after the interpolation) is the end of it. And, since
+#   regex flags are defined immediately after the delim (and repeated flags are ignored), the
+#   condition can be simplified to `/#{...}/noisue`.
+#
+#   Most of those flags are irrelevant and are simply supplied to make an actual English word. The
+#   interesting one is `/o`, which indicates that the regex should only do interpolation once. The
+#   odd part is that, if a regex literal is used as condition for `if`, the `/o` flag is ignored.
+# - `if /.../` - Similar to the `while /.../` from earlier, using a regex literal within an `if`'s
+#   condition is the same as `if $_ =~ /.../` (barring the `/o` idiosyncrasy mentioned in the
+#   previous paragraph.) Thus, `$=` will be incremented by 1 if the regex matches the current line.
+# - `0D97` In addition to `0x`, `0o`, and `0b` numerical literals, Ruby also has `0d`, which is
+#   base 10 (and is thus entirely irrelevant.) So `0D97` is the same as `97`.
+# - `?C` In the olden days, there used to be a difference between strings and chars---chars literals
+#   were denoted via `?` followed by a character. When they were unified in Ruby 1.8, the `?` syntax
+#   stayed around, but simply meant a string of length one. So `?C` is the same as `'C'`.
+# - `[97+$=].pack 'C'` This uses `Array#pack` to convert `97+$=` into a string based on the format
+#   string (`'C'`). Just a `'C'` simply takes the first element in the array and converts it to its
+#   character value. In essence, this is an overengineered version of `(97+$=).chr`.
+# So, `$=` is incremented by one only if the current line includes the character denoted by `97+$=`.
+# As `97.chr` is `'a'`, this adds 1 to `$=` if the current line contains the next letter in the
+# alphabet.
 $=+=1if%r
 #{[0D97+$=].pack ?C}
 nonissue
-# (also note the `o` weird discrepancy)
 
+# Lastly, we get to the `__END__`. In Ruby, everything after an `\n__END__\n` is ignored and
+# considered a comment. (There are other uses for it---`DATA`---but I don't use that here.)
 __END__
 hopefully every single line in here should have something odd about it.
 let's take the first two (non-shebang/comment) lines alone:
@@ -173,4 +199,5 @@ let's take the first two (non-shebang/comment) lines alone:
 - using `%<space><space>` as an empty string
 - regex in conditions (`/\W|\d/`)
 
+You can use the below before the `END` if you dont want to read data from `$0`
 # BEGIN{$0="the quick brown fox jumps over the lazy dog"}
