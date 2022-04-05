@@ -68,12 +68,8 @@ class Value
          raise TypeError, "can only add arrays together (got #{rhs.class})" unless rhs.is_a? Array
          Ary.new @value + rhs.value
       end
-      def [](index)
-         @value[index.to_i]
-      end
-      def []=(index, value)
-         @value[index.to_i] = value
-      end
+      def [](index) = @value[index.to_i]
+      def []=(index, value) = @value[index.to_i] = value
    end
 
    class Function < Value

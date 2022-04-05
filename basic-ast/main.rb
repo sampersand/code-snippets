@@ -48,5 +48,3 @@ function main() {
   print_fizzbuzz();
 }
 EOS
- 
- 
