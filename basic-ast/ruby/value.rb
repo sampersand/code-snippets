@@ -69,7 +69,7 @@ class Value
          Ary.new @value + rhs.value
       end
       def [](index) = @value[index.to_i]
-      def []=(index, value) = @value[index.to_i] = value
+      def []=(index, value) @value[index.to_i] = value end
    end
 
    class Function < Value

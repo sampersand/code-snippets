@@ -1,20 +1,3 @@
-require_relative 'ast'
-require_relative 'env'
-require_relative 'parser'
-
-
-def run_program(input)
-  env = Environment.new
-  parser = Parser.new input
-
-  while (d = Declaration.parse parser)
-    d.declare env
-  end
-
-  env.get_var('main').call(env)
-end
-
-run_program <<EOS
 global max
 
 function what_to_print(num) {
@@ -47,4 +30,3 @@ function main() {
   max = 100;
   print_fizzbuzz();
 }
-EOS
