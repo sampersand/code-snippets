@@ -26,7 +26,6 @@ void assign_var(env *e, const char *s, value v) {
 			return;
 		}
 
-
 	map *locals = &e->stackframes[e->sp];
 
 	for (int i = 0; i < locals->len; ++i)

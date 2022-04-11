@@ -6,9 +6,9 @@
 env e;
 void run_declaration(ast_declaration*, env*);
 int main(int argc, char **argv) {
-	// tokenizer t = new_tokenizer("function main() { b = 0; }");
-	tokenizer t = new_tokenizer(argv[1]);
-	// tokenizer t = new_tokenizer("\
+	// tokenizer tzr = new_tokenizer("function main() { b = 0; }");
+	tokenizer tzr = new_tokenizer(argv[1]);
+	// tokenizer tzr = new_tokenizer("\
 	// 	function foo() { x = 2; return 4; } \n\
 	// 	function main1(){ x = 3; print(\"hi\" + (''+foo()) + \"\n\"); print(\"\"+x); } \n\
 	// 	function main() { \n\
@@ -19,7 +19,7 @@ int main(int argc, char **argv) {
 	// 	}");
 
 	ast_declaration *d;
-	while ((d = next_declaration(&t)))
+	while ((d = next_declaration(&tzr)))
 		run_declaration(d, &e);
 
 	value v;

@@ -5,7 +5,6 @@
 #define STACKFRAME_LIMIT 10000
 #endif
 
-typedef struct { const char *name; value v; } entry;
 typedef struct {
 	int cap, len;
 	struct entry { const char *name; value v; } *entries;

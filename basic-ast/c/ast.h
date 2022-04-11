@@ -2,7 +2,7 @@
 #include "value.h"
 #include "token.h"
 
-struct ast_declaration *next_declaration(tokenizer *t);
+struct ast_declaration *next_declaration(tokenizer *tzr);
 
 typedef struct ast_primary {
 	enum {

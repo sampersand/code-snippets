@@ -13,31 +13,31 @@ tokenizer new_tokenizer(const char *stream) {
 	};
 }
 
-#define parse_error(t, msg, ...) (fprintf(stderr, \
-	"invalid syntax at %d: " msg, t->lineno, __VA_ARGS__), exit(1))
+#define parse_error(tzr, msg, ...) (die(\
+	"invalid syntax at %d: " msg, tzr->lineno, __VA_ARGS__))
 
-static char peek(tokenizer *t) {
-	return t->stream[0];
+static char peek(tokenizer *tzr) {
+	return tzr->stream[0];
 }
 
-static void advance(tokenizer *t) {
-	if (*t->stream++ == '\n')
-		++t->lineno;
+static void advance(tokenizer *tzr) {
+	if (*tzr->stream++ == '\n')
+		++tzr->lineno;
 }
 
-static token parse_integer(tokenizer *t, bool is_negative) {
+static token parse_integer(tokenizer *tzr, bool is_negative) {
 	token tkn = { .kind = TK_LITERAL };
 	long long num = 0;
 
 	char c;
-	while (isdigit(c = peek(t))) {
+	while (isdigit(c = peek(tzr))) {
 		num *= 10;
 		num += c - '0';
-		advance(t);
+		advance(tzr);
 	}
 
 	if (isalpha(c) || c == '_')
-		parse_error(t, "bad character '%c' after integer literal", c);
+		parse_error(tzr, "bad character '%c' after integer literal", c);
 
 	if (is_negative)
 		num *= -1;
@@ -46,13 +46,13 @@ static token parse_integer(tokenizer *t, bool is_negative) {
 	return tkn;
 }
 
-static token parse_identifier(tokenizer *t) {
-	const char *start = t->stream;
+static token parse_identifier(tokenizer *tzr) {
+	const char *start = tzr->stream;
 
 	char c;
-	while(isalnum(c = peek(t)) || c == '_')
-		advance(t);
-	int len = t->stream - start;
+	while(isalnum(c = peek(tzr)) || c == '_')
+		advance(tzr);
+	int len = tzr->stream - start;
 
 	token tkn;
 
@@ -72,44 +72,44 @@ static token parse_identifier(tokenizer *t) {
 	CHECK_FOR_KEYWORD("return", TK_RETURN)
 
 	tkn.kind = TK_IDENT;
-	tkn.str = strndup(start, t->stream - start); // we own the ident
+	tkn.str = strndup(start, tzr->stream - start); // we own the ident
 
 	return tkn;
 }
 
-static int parse_hex(tokenizer *t, char c) {
+static int parse_hex(tokenizer *tzr, char c) {
 	if (isdigit(c)) return c - '0';
 	if ('a' <= c && c <= 'f') return c - 'a' + 10;
 	if ('A' <= c && c <= 'F') return c - 'F' + 10;
-	parse_error(t, "unknown hex digit '%c'", c);
+	parse_error(tzr, "unknown hex digit '%c'", c);
 }
 
-static token parse_string(tokenizer *t) {
-	char quote = peek(t);
-	advance(t);
+static token parse_string(tokenizer *tzr) {
+	char quote = peek(tzr);
+	advance(tzr);
 
-	const char *start = t->stream;
-	int starting_line = t->lineno;
+	const char *start = tzr->stream;
+	int starting_line = tzr->lineno;
 	bool was_anything_escaped = false;
 
 	char c;
-	while ((c = peek(t)) != quote) {
+	while ((c = peek(tzr)) != quote) {
 		if (c == '\0')
-			parse_error(t, "unterminated quote encountered started on %d", starting_line);
+			parse_error(tzr, "unterminated quote encountered started on %d", starting_line);
 
-		advance(t);
+		advance(tzr);
 
 		if (c == '\\')  {
-			c = peek(t);
+			c = peek(tzr);
 
 			if (quote == '\"' || (c == '\\' || c == '\'' || c == '\"'))
 				was_anything_escaped = true;
 		}
 	}
 
-	int length = t->stream - start;
+	int length = tzr->stream - start;
 	token tkn = { .kind = TK_LITERAL };
-	advance(t);
+	advance(tzr);
 
 	// simple case, just return the original string.
 	if (!was_anything_escaped)
@@ -140,11 +140,11 @@ static token parse_string(tokenizer *t) {
 			case 'f': c = '\f'; break;
 			case '0': c = '\0'; break;
 			case 'x':
-				c = (parse_hex(t, start[i]) << 4) + parse_hex(t, start[i+1]);
+				c = (parse_hex(tzr, start[i]) << 4) + parse_hex(tzr, start[i+1]);
 				i += 2;
 				break;
 			default:
-				parse_error(t, "unknown escape character '%c'", c);
+				parse_error(tzr, "unknown escape character '%c'", c);
 			}
 		}
 
@@ -156,15 +156,15 @@ static token parse_string(tokenizer *t) {
 	return tkn;
 }
 
-token next_token(tokenizer *t) {
+token next_token(tokenizer *tzr) {
 	char c;
 
 	// Strip whitespace and comments.
-	for (; (c = peek(t)); advance(t)) {
+	for (; (c = peek(tzr)); advance(tzr)) {
 		if (c == '#')
 			do {
-				advance(t);
-			} while ((c = peek(t)) && c != '\n');
+				advance(tzr);
+			} while ((c = peek(tzr)) && c != '\n');
 
 		if (!isspace(c))
 			break;
@@ -173,19 +173,19 @@ token next_token(tokenizer *t) {
 	// For simple tokens, just return them.
 	switch (c) {
 	case '=': case '!': case '<': case '>':
-		if (t->stream[1] == '=')
-			t->stream++, c += 0x80;
+		if (tzr->stream[1] == '=')
+			tzr->stream++, c += 0x80;
 		goto normal;
 
 	case '+': case '-': 
-		if (isdigit(t->stream[1]))
-			return advance(t), parse_integer(t, c == '-');
+		if (isdigit(tzr->stream[1]))
+			return advance(tzr), parse_integer(tzr, c == '-');
 		// fallthru
 
 	case '(': case ')': case '[': case ']': case '{': case '}':
 	case ',': case ';': case '*': case '/': case '%':
 	normal:
-		advance(t);
+		advance(tzr);
 		// fallthru
 
 	case '\0':
@@ -193,11 +193,11 @@ token next_token(tokenizer *t) {
 	}
 
 	// for more complicated ones, defer to their functions.
-	if (isdigit(c)) return parse_integer(t, false);
-	if (isalpha(c) || c == '_') return parse_identifier(t);
-	if (c == '\'' || c == '\"') return parse_string(t);
+	if (isdigit(c)) return parse_integer(tzr, false);
+	if (isalpha(c) || c == '_') return parse_identifier(tzr);
+	if (c == '\'' || c == '\"') return parse_string(tzr);
 
-	parse_error(t, "unknown token start: '%c'", c);
+	parse_error(tzr, "unknown token start: '%c'", c);
 }
 
 
