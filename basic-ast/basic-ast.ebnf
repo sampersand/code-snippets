@@ -11,12 +11,13 @@ statement
   | <while-statement>
   | <break-statement>
   | <continue-statement>
+  | <expression> ';'
   ;
-return-statement := 'return' <expression> ;
+return-statement := 'return' [<expression>] ';' ;
 if-statement := 'if' <expression> <block> ['else' <block>] ;
 while-statement := 'while' <expression> <block> ;
-break-statement := 'break' ;
-continue-statement := 'continue' ;
+break-statement := 'break' ';' ;
+continue-statement := 'continue' ';' ;
 
 expression
  := <simple-assignment>

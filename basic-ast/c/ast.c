@@ -13,9 +13,9 @@ token peek(tokenizer *tzr) {
 }
 
 token advance(tokenizer *tzr) {
-	token tk = peek(tzr);
+	token tkn = peek(tzr);
 	tzr->prev.kind = TK_EOF;
-	return tk;
+	return tkn;
 }
 
 void unadvance(tokenizer *tzr, token tkn) {
@@ -24,10 +24,7 @@ void unadvance(tokenizer *tzr, token tkn) {
 }
 
 token guard(tokenizer *tzr, token_kind k) {
-	if (peek(tzr).kind == k)
-		return advance(tzr);
-
-	return (token) {.kind = TK_EOF};
+	return peek(tzr).kind == k ? advance(tzr) : (token) { .kind = TK_EOF };
 }
 
 token expect(tokenizer *tzr, token_kind k) {

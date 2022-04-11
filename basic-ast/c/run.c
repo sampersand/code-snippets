@@ -27,6 +27,7 @@ value run_primary(ast_primary *prim, env *e){
 		v2 = run_expression(prim->expr, e);
 		return index_into(v1, v2);
 
+	// this is bad. 
 	case AST_FNCALL: {
 		int kind = 0;
 		if (prim->prim->kind == AST_VAR && !strcmp(prim->prim->ident, "print")) kind = 1;

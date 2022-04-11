@@ -2,7 +2,6 @@ require_relative 'ast'
 require_relative 'env'
 require_relative 'parser'
 
-
 def run_program(input)
   env = Environment.new
   parser = Parser.new input
