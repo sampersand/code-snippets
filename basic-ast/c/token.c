@@ -30,38 +30,28 @@ static token parse_integer(tokenizer *tzr, bool is_negative) {
 	long long num = 0;
 
 	char c;
-	while (isdigit(c = peek(tzr))) {
-		num *= 10;
-		num += c - '0';
-		advance(tzr);
-	}
+	for (; isdigit(c = peek(tzr)); advance(tzr))
+		num = num*10 + (c - '0');
 
 	if (isalpha(c) || c == '_')
 		parse_error(tzr, "bad character '%c' after integer literal", c);
 
-	if (is_negative)
-		num *= -1;
-
-	tkn.v = num2value(num);
-	return tkn;
+	return tkn.v = num2value(is_negative ? -num : num), tkn;
 }
 
 static token parse_identifier(tokenizer *tzr) {
 	const char *start = tzr->stream;
 
 	char c;
-	while(isalnum(c = peek(tzr)) || c == '_')
-		advance(tzr);
+	for(; isalnum(c = peek(tzr)) || c == '_'; advance(tzr));
+
 	int len = tzr->stream - start;
 
-	token tkn;
-
-
-	if (!strncmp(start, "true", len)) return tkn.kind = TK_LITERAL, tkn.v = VTRUE, tkn;
-	if (!strncmp(start, "false", len)) return tkn.kind = TK_LITERAL, tkn.v = VFALSE, tkn;
-	if (!strncmp(start, "null", len)) return tkn.kind = TK_LITERAL, tkn.v = VNULL, tkn;
+	if (!strncmp(start, "true", len)) return (token) { .kind = TK_LITERAL, .v = VTRUE };
+	if (!strncmp(start, "false", len)) return (token) { .kind = TK_LITERAL, .v = VFALSE };
+	if (!strncmp(start, "null", len)) return (token) { .kind = TK_LITERAL, .v = VNULL };
 	#define CHECK_FOR_KEYWORD(str_, kind_) \
-		if (!strncmp(start, str_, strlen(str_))) return tkn.kind = kind_, tkn;
+		if (!strncmp(start, str_, strlen(str_))) return (token) {.kind= kind_};
 	CHECK_FOR_KEYWORD("global", TK_GLOBAL)
 	CHECK_FOR_KEYWORD("function", TK_FUNCTION)
 	CHECK_FOR_KEYWORD("if", TK_IF)
@@ -71,10 +61,7 @@ static token parse_identifier(tokenizer *tzr) {
 	CHECK_FOR_KEYWORD("continue", TK_CONTINUE)
 	CHECK_FOR_KEYWORD("return", TK_RETURN)
 
-	tkn.kind = TK_IDENT;
-	tkn.str = strndup(start, tzr->stream - start); // we own the ident
-
-	return tkn;
+	return (token) { .kind=TK_IDENT, .str = strndup(start, tzr->stream - start) };
 }
 
 static int parse_hex(tokenizer *tzr, char c) {
@@ -103,29 +90,28 @@ static token parse_string(tokenizer *tzr) {
 			c = peek(tzr);
 
 			if (quote == '\"' || (c == '\\' || c == '\'' || c == '\"'))
-				was_anything_escaped = true;
+				was_anything_escaped = true, advance(tzr);
 		}
 	}
 
 	int length = tzr->stream - start;
-	token tkn = { .kind = TK_LITERAL };
 	advance(tzr);
 
 	// simple case, just return the original string.
 	if (!was_anything_escaped)
-		return tkn.v = str2value(strndup(start, length)), tkn;
+		return (token) { .kind=TK_LITERAL, .v = str2value(strndup(start, length)) };
 
 	// well, something was escaped, so we now need to deal with that.
 	char *str = malloc(length); // note not `+1`, as we're removing at least 1 slash.
 	int i = 0, stridx = 0;
 
 	while (i < length) {
-		if (start[i++] != '\\') {
-			str[stridx++] = start[i];
+		if (start[i] != '\\') {
+			str[stridx++] = start[i++];
 			continue;
 		}
 
-		char c = start[i++];
+		char c = start[++i];
 
 		if (quote == '\'') {
 			if (c != '\\' && c != '\"' && c != '\'')
@@ -133,15 +119,14 @@ static token parse_string(tokenizer *tzr) {
 		} else {
 			switch (c) {
 			case '\'': case '\"': case '\\': break;
-
 			case 'n': c = '\n'; break;
 			case 't': c = '\t'; break;
 			case 'r': c = '\r'; break;
 			case 'f': c = '\f'; break;
 			case '0': c = '\0'; break;
 			case 'x':
-				c = (parse_hex(tzr, start[i]) << 4) + parse_hex(tzr, start[i+1]);
-				i += 2;
+				i += 3;
+				c = (parse_hex(tzr, start[i-2]) << 4) + parse_hex(tzr, start[i-1]);
 				break;
 			default:
 				parse_error(tzr, "unknown escape character '%c'", c);
@@ -149,11 +134,11 @@ static token parse_string(tokenizer *tzr) {
 		}
 
 		str[stridx++] = c;
+		i++;
 	}
 
 	str[stridx] = '\0';
-	tkn.v = str2value(str);
-	return tkn;
+	return (token) { .kind = TK_LITERAL, .v = str2value(str) };
 }
 
 token next_token(tokenizer *tzr) {
