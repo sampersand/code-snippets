@@ -13,7 +13,7 @@ BEGIN{$_=$0.tr *%w*A-Z a-z*;sub$&,%  while/[[:alpha:]]/; $stdin=StringIO.new$_}
 
 eval <<'''$==0''' if 2..2
 alias$=$-_
-def ($stdin=$F.sort).gets = shift
+def ($stdin=$F.sort)::gets = shift
 
 $=+=1if%r
 #{[0D97+$=].pack ?C}
