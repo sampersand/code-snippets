@@ -57,7 +57,7 @@ BEGIN{
   # - `sub` is a function that's only defined if the `-n` or `-p` flags are supplied, and is the
   #   same as `$_.sub!`. In this case, it's `$_.sub!($&, "")`, which will replace the first instance
   #   of the non-letter with an empty string, thus removing it from `$_`.
-  sub $&, %  while /[[:alpha:]]/
+  sub $&, %  while /[^[:alpha:]]/
 
   # The `-n` flag actually pulls from `$stdin` after all `BEGIN`s are executed. So, by using the
   # `StringIO`, we can change the stdin to be the value of `$_`--that is, the stripped input string.
