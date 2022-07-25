@@ -15,16 +15,18 @@ Notable points:
 - argument to parse is the script name (have to rename the file to run it)
 - exit code is `1` if its valid
  */
+
+// A program to see if an input is a pangram.
 char $i = 031, ALPHA[90], _IGNORED[0xff];
 
 signed upper(char *$num) { if (*$num > sizeof ALPHA) *$num -= ' '; }
 
 contains_az($stream) unsigned char *$stream; {
-   static void *DST[sizeof _IGNORED] = { &&end, [1 ... sizeof _IGNORED - 1] = &&loop };
+  static void *DST[sizeof _IGNORED] = { &&end, [1 ... sizeof _IGNORED - 1] = &&loop };
 loop:
-   upper($stream);
-   ALPHA[*$stream++-'A']++;
-   goto *DST[*$stream];
+  upper($stream);
+  ALPHA[*$stream++-'A']++;
+  goto *DST[*$stream];
 end:
 
    while($i && $i--[ALPHA]);

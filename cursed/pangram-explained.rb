@@ -38,11 +38,11 @@ BEGIN{
 
   # There's quite a bit to unpack here. This statement is simply removing all non-letters from the
   # input. That way, `$_` will only contain letters. This expression can be expanded out to:
-  #   while $_ =~ /[[:alpha:]]/
+  #   while $_ =~ /[^[:alpha:]]/
   #     $_.sub! $&, ""
   #   end
   # Let's go over the expansions one at a time:
-  # - `/[[:alpha:]]/` uses POSIX bracket expressions. This is equivalent to `[a-zA-Z]`.
+  # - `/[^[:alpha:]]/` uses POSIX bracket expressions. This is equivalent to `[^a-zA-Z]`.
   # - `while`s, if given a regex literal, will interpret their condition as matching against the
   #   `$_` variable. That is, `while /x/` is the same as `while $_ =~ /x/`. (`$_` was set in the
   #    previous line). `String#=~`'s return value is `nil` if the regex doesn't match, so this
@@ -50,7 +50,7 @@ BEGIN{
   # - `%  ` Is, once again, abusing the `%` literal syntax, taking advantage of the fact that _any_
   #   non-word character can be the delim. In this case, we use ` ` itself. Additionally, if no
   #   "type" is supplied with `w` literals, it's assumed to be a string. So `%  ` is actually the
-  #   same as `%()`, which is an empty string.
+  #   same as `""`, an empty string.
   # - `$&` is a special variable that's set when matching against regexps. When a regex is matched,
   #   the entire matched string is set to the variable `$&`. In this case, it means the non-letter
   #   that's matched in the `while`'s condition is set to `$&`.
@@ -78,7 +78,7 @@ BEGIN{
 #   surrounded with quotes. So `<<''` is actually a heredoc that's completed when an _empty line_ is
 #   read, which is the line directly after `def`: That is, the two subsequent lines (the `alias` and
 #   `def` ones) are actually part of a string literal.
-# - Ruby, like C, allows you to put multiple string literals next to eachother, and will concatenate
+# - Ruby, like C, allows you to put multiple string literals next to one other, and will concatenate
 #   them: `puts 'Hello' 'world'` is _identical_ to `puts 'Helloworld'`. And, HEREDOCs are actually
 #   string literals. So the `<<'''$==0'''` is actually three separate string literals right next to
 #   one another: The first is the heredoc, the second is `'$==0'`, and the last is an empty string,
@@ -93,7 +93,11 @@ BEGIN{
 #   values: once the `lhs` is true, the condition will always be true (regardless of whether `lhs`
 #   becomes false in the meantime) until `rhs` becomes true, at which point the flipflop "resets"
 #   and waits for the `lhs` to become true again. (There's two variants, `..` and `...`; the
-#   difference being `...` will check `rhs` the first time `lhs` becomes true, whereas `..` will.)
+#   difference being `...` will check `rhs` the first time `lhs` becomes true, whereas `..` wont.)
+#   LATER NOTE: I'm not sure the description of the variations is correct, cf:
+#      10.times do |n|
+#        puts n if n == 0 .. true
+#      end
 #
 #   In the spirit of weirdness, I used an almost entirely unknown feature of this unknown feature of
 #   ruby---using integer literals in flipflops. If you use an integer literal instead of a normal
@@ -123,12 +127,12 @@ eval <<'''$==0''' if 2..2
 # `$-v/$VERBOSE`.)
 #
 # Why is this relevant? Because we're aliasing `$=` to be `$-_`. Normally, you cannot interact 
-# all with `$=---its "setter" method just ignores the value and warns, and its "getter" method
+# all with `$=`---its "setter" method just ignores the value and warns, and its "getter" method
 # always returns `false`. However, if you alias `$=` to another global variable, you overwrite those
 # getters and setters, thus allowing you to use `$=` just like any other global variable. I could
 # have picked (normal) global variable for it, but I chose `$-_`:
 #
-# Asides from the perl-esque global variables (`$"`, `$:`, `$@`, etc.), Ruby also has global
+# Asides from the perl-esque global variables (e.g. `$"`, `$:`, `$@`, etc.), Ruby also has global
 # variables for command line arguments: `$-v` is set to true if the `-v` flag was given, `$-F` is
 # set to the regex passed to `-F`, `$-0` is the input line separator (set via `-0`), etc. But Ruby's
 # parser actually allows for _any_ global variable that matches `$-[a-zA-Z0-9_]` to be used. So, why
@@ -165,11 +169,12 @@ def ($stdin=$F.sort).gets = shift
 #
 #   Most of those flags are irrelevant and are simply supplied to make an actual English word. The
 #   interesting one is `/o`, which indicates that the regex should only do interpolation once. The
-#   odd part is that, if a regex literal is used as condition for `if`, the `/o` flag is ignored.
+#   odd part is that, if a regex literal is used as condition for  if`, the `/o` flag is ignored.
+#   (Note that the `/i` flag is irrelevant, as the first thing we did lower-cased the input.)
 # - `if /.../` - Similar to the `while /.../` from earlier, using a regex literal within an `if`'s
 #   condition is the same as `if $_ =~ /.../` (barring the `/o` idiosyncrasy mentioned in the
 #   previous paragraph.) Thus, `$=` will be incremented by 1 if the regex matches the current line.
-# - `0D97` In addition to `0x`, `0o`, and `0b` numerical literals, Ruby also has `0d`, which is
+# - `0D97` In addition to `0x`, `0o`, and `0b` numerical literals, Ruby also has `0d`/`0D`, which is
 #   base 10 (and is thus entirely irrelevant.) So `0D97` is the same as `97`.
 # - `?C` In the olden days, there used to be a difference between strings and chars---chars literals
 #   were denoted via `?` followed by a character. When they were unified in Ruby 1.8, the `?` syntax

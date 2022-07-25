@@ -9,7 +9,7 @@ Make it cursed.
 =end of the prompt
 
 END{p$====032}
-BEGIN{$_=$0.tr *%w*A-Z a-z*;sub$&,%  while/[[:alpha:]]/; $stdin=StringIO.new$_}
+BEGIN{$_=$0.tr *%w*A-Z a-z*;sub$&,%  while/[^[:alpha:]]/; $stdin=StringIO.new$_}
 
 eval <<'''$==0''' if 2..2
 alias$=$-_
