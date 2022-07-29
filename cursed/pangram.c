@@ -22,11 +22,11 @@ char $i = 031, ALPHA[90], _IGNORED[0xff];
 signed upper(char *$num) { if (*$num > sizeof ALPHA) *$num -= ' '; }
 
 contains_az($stream) unsigned char *$stream; {
-  static void *DST[sizeof _IGNORED] = { &&end, [1 ... sizeof _IGNORED - 1] = &&loop };
+    static void *DST[sizeof _IGNORED] = { &&end, [1 ... sizeof _IGNORED - 1] = &&loop };
 loop:
-  upper($stream);
-  ALPHA[*$stream++-'A']++;
-  goto *DST[*$stream];
+    upper($stream);
+    ALPHA[*$stream++-'A']++;
+    goto *DST[*$stream];
 end:
 
    while($i && $i--[ALPHA]);
