@@ -7,47 +7,95 @@
 # a file into terminal, it pastes its full path in; so you can type `cdd `, 
 # drag a file in, hit enter, and then you're now in the folder containing said
 # file!)
+#
+# To make it easier, I've added `#` after lines that I've changed, so you can
+# more easily see what's happening.
+
+
 
 # Ok! First attempt!
 function cdd {
-	cd $(dirname $1)
+	cd $(dirname $1) #
 }
+
 
 
 # Oops. Looks like `function` isn't POSIX-compliant, and shells (like `dash`)
-# don't understand it. rewrite it in POSIX-compliant style
+# don't understand it. Time to rewrite it in POSIX-compliant style!
 cdd () {
 	cd $(dirname $1)
 }
 
 
-# Oh, well it looks like our user forgot to pass the argument; let's handle that.
+
+# Oh, it looks like our user forgot to pass the argument; let's add a usage.
 cdd () {
-	cd $(dirname ${1:?missing a file})
+	if [[ $# != 1 ]]; then
+		echo usage: $0 file >&2
+		return 1
+	fi
+
+	cd $(dirname $1)
 }
+
+
+
+# D'oh! Looks like using `$0` as a shorthand for the program name only works in
+# scripts (ie not functions); in ZSH it also works in functions, but this isn't
+# portable. Guess we have to type out the name.
+cdd () {
+	if [[ $# != 1 ]]; then
+		echo usage: cdd file >&2
+		return 1
+	fi
+
+	cd $(dirname $1)
+}
+
 
 
 # Hmm... our user has decided to use paths with spaces in them, so our command
-# fails. Looks like we have to quote it.
+# fails. Let's quote it. In fact, let's quote _everything_ just to be safe.
 cdd () {
-	cd "$(dirname "${1:?missing a file}")"
+	if [[ "$#" != 1 ]]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	cd "$(dirname "$1")"
 }
+
 
 
 # Ok, all's going well. Until... oh boy their directories/files start with `-`s
-# and now `dirname` (and `cd`) think that the directory is actually an argument. 
-# et's add `--` to fix that.
+# and now `dirname`/`cd` the directory is actually an argument. Let's add `--`
+# to fix that.
 cdd () {
-	cd -- "$(dirname -- "${1:?missing a file}")"
+	if [[ "$#" != 1 ]]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	cd -- "$(dirname -- "$1")"
 }
 
 
-# Apparently, our users are naming directories `-`. So when they type out
-# `cdd -/foo`, our function executes `cd -- -`; cd has a special case, such that
-# when you cd to exactly `-`, it goes to the previous directory. So we need to
-# check for that, and replace it with `./-`.
+# Apparently, our users are _also_ naming naming directories a literal `-`. So,
+# when they type out `cdd -/foo`, our function executes `cd -- -`.
+#
+# This might seem OK at first glance, but actually cd has a special case: When
+# you change directories to exactly the string `-`,  it goes to the previous
+# directory you were in. This is useful when doing stuff interactively, but
+# not so much when in scripts.
+# 
+# So, we need to explicitly check for that, and replace it with `./-`.
 cdd () {
-	directory="$(dirname -- "${1:?missing a file}")"
+	if [[ "$#" != 1 ]]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	directory="$(dirname -- "$1")"
 
 	if [[ "$directory" = - ]]; then
 		directory=./-
@@ -56,9 +104,15 @@ cdd () {
 }
 
 
-# Whoops. `[[` isn't POSIX compliant. Looks like we gotta use `[`
+# Whoops. `[[ .. ]]` isn't POSIX compliant (even if most shells like Bash and ZSH
+# support it). Looks like we gotta use `[ .. ]`.
 cdd () {
-	directory="$(dirname -- "${1:?missing a file}")"
+	if [ "$#" != 1 ]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	directory="$(dirname -- "$1")"
 
 	if [ "$directory" = - ]; then
 		directory=./-
@@ -66,37 +120,73 @@ cdd () {
 	cd -- "$directory"
 }
 
-# Hmm... Well, it looks like the user's directory _ends in a newline_. Weird,
-# right? According to POSIX, the _only_ invalid characters in a file path are
-# `\0`, and a `/` (which is used to separate folders). So `\n` is valid. Uhhh.
-# Well, the problem is that `$(...)` actually strips all trailing newlines, so
-# `$(dirname 'foo<NEWLINE>/bar')` is `foo` not `foo<NEWLINE>`. Lovely!
+# Nice. Our function works, it's been in production for a few weeks, and all's
+# going well. Until... we hear from a customer that our function breaks when
+# their directory _ends in a newline_. Weird, is that even something we should
+# be worried about?
+#
+# Well, we're trying to be POSIX-compliant. And POSIX states that the _only_
+# invalid characters in a path is `\0` (ie NUL). Which means a newline is valid,
+# and if we want to be POSIX-compliant, we have to support it.
+#
+# But what's the problem with that, right? We're quoting everything, so the
+# shell should be keeping newlines as-is; after all, that's what quotes are for?
+#
+# Well, it turns out that our use of `$(...)`, even within quotes, actually
+# strips all trailing newlines. Most of the time this is what you want (eg
+# `foo=$(echo bar)`; you don't want `foo` to be `bar<NEWLINE>`), but in this
+# case, the user's paths end in a newline, and are deleted. Thus, when we run
+# `$(dirname 'foo<NEWLINE>/bar')`, we get `foo`, not `foo<NEWLINE>`. Lovely!
+#
+# The solution is to print out a single character (here, `x`) after `dirname`,
+# so that whatever newlines `dirname` prints out won't be the _very last
+# characters_, and thus won't be removed by `$(...)`. Then, we just have to
+# remove them with parameter expansion.
 cdd () {
-	# Print out `x` at the end, so any preceding newlines aren't the _very_ last
-	# character, and as such won't be stripped.
-	directory="$(dirname -- "${1:?missing a file}"; printf x)"
+	if [ "$#" != 1 ]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	# We can pick any character, but I like `x`.
+	directory="$(dirname -- "$1"; echo x)"
 
 	# Remove a `<NEWLINE>x` from the output of the previous command. We add the
 	# `?` so the newline that `dirname` is guaranteed to output is also deleted.
 	directory="${directory%?x}"
 
+	# Ok, now `directory` is good-to-go!
+
 	if [ "$directory" = - ]; then
 		directory=./-
 	fi
 	cd -- "$directory"
 }
 
-
-# Oh, it looks like our users are complaining that our function doesn't work
-# properly if either the `dirname` or `printf`s fail. Time to handle errors!~
+# Our users are surely toying with us. Apparently their files contain the
+# character sequence `\c`. This does not play well with `echo` (which is a bit
+# of a portability nightmare), as POSIX states that if a backslash followed by a
+# lower-case `c` is present in an argument to `echo`, nothing else should be
+# printed out. The original intent was to suppress the trailing newlines that
+# `echo` always adds.
+#
+# This means if `dirname` or `printf` fails for some reason, if the argument
+# they gave was, say, `foo<BACKSLASH>cbar/baz`, then the error message would be
+#
+#    cdd: unable to get dirname for foo<NO TRAILING NEWLINES>
+#
+# Not good. Time to use the tried-and-true alternative, `printf`!
 cdd () {
-	# Print out `x` at the end, so any preceding newlines aren't the _very_ last
-	# character, and as such won't be stripped.
-	directory="$(dirname -- "${1:?missing a file}" && printf x)" || {
+	if [ "$#" != 1 ]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	if directory="$(dirname -- "$1" && echo x)"; then
 		exit_status="$?"
-		echo "Unable to get the dirname!" >&2
+		printf 'cdd: unable to get dirname for %s\n' $"1" >&2
 		return "$exit_status"
-	}
+	fi
 
 	directory="${directory%?x}"
 	if [ "$directory" = - ]; then
@@ -117,34 +207,39 @@ cdd () {
 # (Note, it's possible to _guarantee_ we won't have collisions, but we need to
 # use `eval`, and that's another story lol.)
 cdd () {
-	__cdd_priv_directory="$(dirname -- "${1:?missing a file}" && printf x)" || {
-		__cdd_priv_exit_status="$?"
-		echo "Unable to get the dirname!" >&2
-		return "$__cdd_priv_exit_status"
-	}
-
-	__cdd_priv_directory="${__cdd_priv_directory%?x}"
-	if [ "$__cdd_priv_directory" = - ]; then
-		__cdd_priv_directory=./-
+	if __cdd_directory="$(dirname -- "$1" && echo x)"; then
+		__cdd_exit_status="$?"
+		echo "cdd: unable to get dirname for $1" >&2
+		return "$__cdd_exit_status"
 	fi
-	cd -- "$__cdd_priv_directory"
+
+	__cdd_directory="${__cdd_directory%?x}"
+	if [ "$__cdd_directory" = - ]; then
+		__cdd_directory=./-
+	fi
+	cd -- "$__cdd_directory"
 }
 
 # Urk... Looks like people are complaining that after running `cdd`, their
-# environment now has `__cdd_priv_directory` and `__cdd_priv_exit_status`. Guess
+# environment now has `__cdd_directory` and `__cdd_exit_status`. Guess
 # we have to `unset` them before we return.
 #
 # Although. There's no way to unset a variable _and_ then return it. So we have
 # to make use of the only local variables you have: arguments to the function.
 cdd () {
-	__cdd_priv_directory="$(dirname -- "${1:?missing a file}" && printf x)" || {
+	# We still have to use a local variable foo `__cdd_directory`, as the return
+	# value of `set -- "$(...)"` is the return value of `set`, and thus we have
+	# no way of knowing whether `...` failed. So we just need to make sure to
+	# `unset` it.
+	if ! __cdd_directory="$(dirname -- "$1" && echo x)"; then
 		set -- "$?"
-		echo "Unable to get the dirname!" >&2
+		unset -v __cdd_directory  # use `-v` to only unset variables.
+		echo "cdd: unable to get dirname for $1" >&2
 		return "$1"
-	}
+	fi
 
-	set -- "${__cdd_priv_directory%?x}"
-	unset -v __cdd_priv_directory # use `-v` to only unset variables
+	set -- "${__cdd_directory%?x}"
+	unset -v __cdd_directory
 
 	if [ "$1" = - ]; then
 		set -- ./-
@@ -159,20 +254,23 @@ cdd () {
 #
 # This is obviously not the functionality we want, so we must overwrite it.
 cdd () {
-	__cdd_priv_directory="$(dirname -- "${1:?missing a file}" && printf x)" || {
+	if ! __cdd_directory="$(dirname -- "$1" && echo x)"; then
 		set -- "$?"
-		echo "Unable to get the dirname!" >&2
+		unset -v __cdd_directory
+		echo "cdd: unable to get dirname for $1" >&2
 		return "$1"
-	}
+	fi
 
-	set -- "${__cdd_priv_directory%?x}"
-	unset -v __cdd_priv_directory
+	set -- "${__cdd_directory%?x}"
+	unset -v __cdd_directory
 
 	if [ "$1" = - ]; then
 		set -- ./-
 	fi
 	CDPATH= cd -- "$1"
 }
+
+#---
 
 
 # AAAnd, it looks like your user has decided to `alias` things to oblivion. You
@@ -182,14 +280,14 @@ cdd () {
 # The solution is to quote _any_ part of the command string. The easiest way to
 # do that is to just escape the first character with `\`.
 cdd () {
-	__cdd_priv_directory="$(\dirname -- "${1:?missing a file}" && \printf x)" || {
+	if ! __cdd_directory="$(\dirname -- "$1" && \echo x)"; then
 		\set -- "$?"
-		\echo "Unable to get the dirname!" >&2
+		\echo "cdd: unable to get dirname for $1" >&2
 		\return "$1"
 	}
 
-	\set -- "${__cdd_priv_directory%?x}"
-	\unset -v __cdd_priv_directory
+	\set -- "${__cdd_directory%?x}"
+	\unset -v __cdd_directory
 
 	if \[ "$1" = - ]; then
 		\set -- ./-
@@ -200,14 +298,14 @@ cdd () {
 # Lastly, to be pedantic, let's make sure each command succeeds before going to
 # the next.
 cdd () {
-	__cdd_priv_directory="$(\dirname -- "${1:?missing a file}" && \printf x)" || {
+	if ! __cdd_directory="$(\dirname -- "$1" && \echo x)"; then
 		\set -- "$?" || \return 1
-		\echo "Unable to get the dirname!" >&2 || \return 1
+		\echo "cdd: unable to get dirname for $1" >&2 || \return 1
 		\return "$1" # no need to `||` here, return always succeeds
 	}
 
-	\set -- "${__cdd_priv_directory%?x}" || \return 1
-	\unset -v __cdd_priv_directory || \return 1
+	\set -- "${__cdd_directory%?x}" || \return 1
+	\unset -v __cdd_directory || \return 1
 
 	if \[ "$1" = - ]; then
 		\set -- ./- || \return
