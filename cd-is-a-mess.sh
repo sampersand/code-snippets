@@ -104,6 +104,7 @@ cdd () {
 }
 
 
+
 # Whoops. `[[ .. ]]` isn't POSIX compliant (even if most shells like Bash and ZSH
 # support it). Looks like we gotta use `[ .. ]`.
 cdd () {
@@ -119,6 +120,87 @@ cdd () {
 	fi
 	cd -- "$directory"
 }
+
+
+
+# OH! And what if `dirname` fails? We shouldn't just blindly continue the rest
+# of the function, so let's error out in that case too.
+#
+# Note that the return value of simple assignments (i.e. `foo=bar`, not fancy
+# stuff like `export foo=bar`, etc.) are guaranteed by POSIX to be the return
+# value `bar`, so we can do `if ! foo=bar; then ...` to handle failures.
+cdd () {
+	if [ "$#" != 1 ]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	if ! directory="$(dirname -- "$1")"; then
+		echo "cdd: unable to get dirname for: $1" >&2
+		return 2
+	fi
+
+	if [ "$directory" = - ]; then
+		directory=./-
+	fi
+	cd -- "$directory"
+}
+
+################################################################################
+#                                                                              #
+#                               Local Variables                                #
+#                                                                              #
+################################################################################
+
+# Whelp, shucks. We've gotten complaints from customers that our `directory`
+# variable we've been using so far is actually overwriting _their_ directory
+# variable. This is because in shell scripting, unless you state otherwise, all
+# variables are global. EAsy enough, let's just make it local:
+cdd () {
+	local directory
+
+	if [ "$#" != 1 ]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	if ! directory="$(dirname -- "$1")"; then
+		echo "cdd: unable to get dirname for: $1" >&2
+		return 2
+	fi
+
+	if [ "$directory" = - ]; then
+		directory=./-
+	fi
+	cd -- "$directory"
+}
+
+
+# Once again, POSIX bites us. Nearly every shell in existence has _some_ form of
+# local variables, however the exact syntax they use is slightly different. So,
+# there's no portable way to guarantee that your variable is, in fact, local.
+# Let's try another tactic, picking a name no one should use.
+cdd () {
+	local directory
+
+	if [ "$#" != 1 ]; then
+		echo 'usage: cdd file' >&2
+		return 1
+	fi
+
+	if ! directory="$(dirname -- "$1")"; then
+		echo "cdd: unable to get dirname for: $1" >&2
+		return 2
+	fi
+
+	if [ "$directory" = - ]; then
+		directory=./-
+	fi
+	cd -- "$directory"
+}
+
+
+
 
 # Nice. Our function works, it's been in production for a few weeks, and all's
 # going well. Until... we hear from a customer that our function breaks when
@@ -148,8 +230,13 @@ cdd () {
 		return 1
 	fi
 
-	# We can pick any character, but I like `x`.
-	directory="$(dirname -- "$1"; echo x)"
+	# We can pick any character, but I like `x`. Note that we have to do `&&`
+	# here, as we want to ensure that we still error out if either `dirname` or
+	# `echo` fails.
+	if ! directory="$(dirname -- "$1" && echo x)"; then
+		echo "cdd: unable to get dirname for: $1" >&2
+		return 2
+	fi
 
 	# Remove a `<NEWLINE>x` from the output of the previous command. We add the
 	# `?` so the newline that `dirname` is guaranteed to output is also deleted.
@@ -163,19 +250,31 @@ cdd () {
 	cd -- "$directory"
 }
 
-# Our users are surely toying with us. Apparently their files contain the
-# character sequence `\c`. This does not play well with `echo` (which is a bit
-# of a portability nightmare), as POSIX states that if a backslash followed by a
-# lower-case `c` is present in an argument to `echo`, nothing else should be
-# printed out. The original intent was to suppress the trailing newlines that
-# `echo` always adds.
+Let's review the wacky stuff they've put
+# in filenames to break our function so far:
+#   * Paths with spaces in them
+#   * Directories starting with `-`
+#   * Directories named just `-`
+#   * Directories ending with newlines
+
+# Our users are surely toying with us. We've now received a complaint that the
+# error message for when we're unable to get a dirname is no longer printing the
+# first argument properly. Apparently, the path contains a backslash followed by
+# a lower-case `c`.
 #
-# This means if `dirname` or `printf` fails for some reason, if the argument
-# they gave was, say, `foo<BACKSLASH>cbar/baz`, then the error message would be
+# This does not play well with `echo`, as POSIX states that if a backslash
+# followed by a lower-case `c` is present in an argument to `echo`, then all
+# remaining output should be suppressed. (The original intent was to suppress
+# trailing newlines that `echo` always adds; This, along with a bunch of other
+# gotchas, are why you should never use `echo` in portables scripts for anything
+# other than string literals.)
 #
-#    cdd: unable to get dirname for foo<NO TRAILING NEWLINES>
+# This means if the `dirname` or `echo` fails, and the argument to `cdd` was,
+# say, `foo<BACKSLASH>cbar/baz`, then the error message would be :
 #
-# Not good. Time to use the tried-and-true alternative, `printf`!
+#    cdd: unable to get dirname for foo<NO TRAILING NEWLINE>
+#
+# Not good. The solution? Just don't use `echo` here and opt for `printf`.
 cdd () {
 	if [ "$#" != 1 ]; then
 		echo 'usage: cdd file' >&2
@@ -183,9 +282,8 @@ cdd () {
 	fi
 
 	if directory="$(dirname -- "$1" && echo x)"; then
-		exit_status="$?"
-		printf 'cdd: unable to get dirname for %s\n' $"1" >&2
-		return "$exit_status"
+		printf 'cdd: unable to get dirname for %s\n' "$1" >&2
+		return 2
 	fi
 
 	directory="${directory%?x}"
@@ -196,29 +294,6 @@ cdd () {
 }
 
 
-# Whelp, shucks. We've gotten complaints from customers that our `directory` and
-# `exit_status` variables are overwriting variables from fns that call `cdd`.
-# Easy enough to solve, just add `local directory exit_status` at the start of
-# the function, and they're now local!...
-#
-# ... actually, local variables aren't POSIX complaint. Looks like we'll just
-# have to pick variable names no one will ever conceivable use.
-#
-# (Note, it's possible to _guarantee_ we won't have collisions, but we need to
-# use `eval`, and that's another story lol.)
-cdd () {
-	if __cdd_directory="$(dirname -- "$1" && echo x)"; then
-		__cdd_exit_status="$?"
-		echo "cdd: unable to get dirname for $1" >&2
-		return "$__cdd_exit_status"
-	fi
-
-	__cdd_directory="${__cdd_directory%?x}"
-	if [ "$__cdd_directory" = - ]; then
-		__cdd_directory=./-
-	fi
-	cd -- "$__cdd_directory"
-}
 
 # Urk... Looks like people are complaining that after running `cdd`, their
 # environment now has `__cdd_directory` and `__cdd_exit_status`. Guess
