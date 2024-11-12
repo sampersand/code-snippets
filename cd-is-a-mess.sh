@@ -1,5 +1,4 @@
 #!/bin/sh
-todo: IFS
 
 # This file's an example of why shell programming, especially for POSX-complaint
 # shells, is so darn hard to get right. It's showing the progression of a "cdd"
@@ -8,9 +7,6 @@ todo: IFS
 # a file into terminal, it pastes its full path in; so you can type `cdd `, 
 # drag a file in, hit enter, and then you're now in the folder containing said
 # file!)
-#
-# To make it easier, I've added `#` after lines that I've changed, so you can
-# more easily see what's happening.
 
 
 ################################################################################
@@ -476,80 +472,36 @@ cdd () {
 }
 
 # And there you have it; that's my `cdd` command I personally use, as it's
-# pretty robust, but still marginally readable. But, for fun, let's continue.
-
+# pretty robust, but still marginally readable.
 
 ################################################################################
 #                                                                              #
-#                                  No Aliases                                  #
+#                                     ZSH                                      #
 #                                                                              #
 ################################################################################
 
+
+# For what it's worth, here's what I do in ZSH.
+cdd () CDPATH= cd -- ${${${1:?missing a file}:h}/#%-/-/}
+
+# And here's that expanded out.
 cdd () {
-	if \command -p test "$#" = 0; then
-		\command -p echo 'usage: cdd file' >&2
-		\return 1
-	fi
+	# Ensure the first arg was provided; `: ${a:?...}` is traditional shell
+	# shorthand for validating arguments are provided
+	: ${1:?missing a file}
 
-	if ! __cdd_directory="$(\command -p dirname -- "$1" && \command -p echo x)"; then
-		\unset -v __cdd_directory
-		\command -p printf 'cdd: unable to get dirname for %s\n' "$1" >&2
-		\return 2
-	fi
+	# In ZSH, `${var:h}` is the dirname of `var` without any of the silly hacks
+	# we had to do.
+	local enclosing_directory=${1:h} 
 
-	set -- "${__cdd_directory%?x}"
-	unset -v  __cdd_directory
+	# In ZSH, `${var/#%pat/repl}` expands out to `$var`, unless it exactly
+	# matches `pat`, in which case it expands out to `repl`. In this case, the
+	# `pat` is `-`, and the `repl` is `-/`.
+	#
+	# I only used this pattern matching thing to make it work in one line in the
+	# short example earlier lol. Realistically, I'd do an if sta\tement.
+	local fix_single_hyphen=${enclosing_directory/#%-/-/}
 
-	if [ "$1" = - ]; then
-		set -- -/
-	fi
-
-	CDPATH= cd -- "$1"
+	# Go to the directory
+	CDPATH= cd -- $fix_single_hyphen
 }
-
-
-
-
-# AAAnd, it looks like your user has decided to `alias` things to oblivion. You
-# could just say it's their fault if they `alias dirname='echo hahahaha'`, but
-# let's go through with it.
-#
-# The solution is to quote _any_ part of the command string. The easiest way to
-# do that is to just escape the first character with `\`.
-cdd () {
-	if ! __cdd_directory="$(\dirname -- "$1" && \echo x)"; then
-		\set -- "$?"
-		\echo "cdd: unable to get dirname for $1" >&2
-		\return "$1"
-	}
-
-	\set -- "${__cdd_directory%?x}"
-	\unset -v __cdd_directory
-
-	if \[ "$1" = - ]; then
-		\set -- -/
-	fi
-	CDPATH= \cd -- "$1"
-}
-
-# Lastly, to be pedantic, let's make sure each command succeeds before going to
-# the next.
-cdd () {
-	if ! __cdd_directory="$(\dirname -- "$1" && \echo x)"; then
-		\set -- "$?" || \return 1
-		\echo "cdd: unable to get dirname for $1" >&2 || \return 1
-		\return "$1" # no need to `||` here, return always succeeds
-	}
-
-	\set -- "${__cdd_directory%?x}" || \return 1
-	\unset -v __cdd_directory || \return 1
-
-	if \[ "$1" = - ]; then
-		\set -- -/ || \return
-	fi
-	CDPATH= \cd -- "$1" # don't need to `|| return 1` here, as it's the last stmt
-}
-
-# And there you have it. A (mostly) portable version of `cdd`; Shells can still
-# mess this up, eg with ZSH's global aliases. And, don't even get me started 
-# with symlinks lol. But this is POSIX-compliant, so let's roll with it. 
