@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# This file's an example of why shell programming, especially for POSX-complaint
+# This file's an example of why shell scripting, especially for POSIX-compliant
 # shells, is so darn hard to get right. It's showing the progression of a "cdd"
 # command, a command which just changes directories to the folder containing its
 # argument. (This is actually quite useful, as---at least on macOS---if you drag
@@ -362,7 +362,7 @@ cdd () {
 # `IFS` variable. If you set it to a number, `$#` might accidentally be split
 # apart. So, we have to quote it.
 cdd () {
-	if [ $# = 0 ]; then
+	if [ "$#" = 0 ]; then
 		echo 'usage: cdd file' >&2
 		return 1
 	fi
