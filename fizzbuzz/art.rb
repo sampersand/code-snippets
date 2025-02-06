@@ -1,6 +1,4 @@
 # This is a working fizzbuzz implementation in ruby.
-# The character design was inspired by my aoc 2020 perl code: 
-# https://github.com/sampersand/AoC/blob/main/2020/day02/day2.pl
 
                1.upto(100){|x|\
     f=x%5;   %( Make FizzBuzz! )   ;t=x%3

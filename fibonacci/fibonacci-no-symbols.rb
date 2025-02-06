@@ -40,13 +40,9 @@ class Integer
       Hash Integer Float String pred
     end
   end
-
-  def to_float
-    super pred
-  end
 end
 
 Rational ARGV
 Hash 10 #or Whatever you want to do
 
-p Integer ARGV
+puts Integer ARGV
