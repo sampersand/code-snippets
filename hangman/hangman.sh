@@ -1,14 +1,9 @@
 #!/bin/dash
 
-
-# set -e
-set -uf
-
 alias space="sed 's/./& /g'"
 alias chars='wc -c'
-secret=`cat ${DICTIONARY-/usr/share/dict/words} | grep '.\{5,\}' | sort -R | head -1`
-secret='saucerless'
-guesses=
+test $DICTIONARY || DICTIONARY=/usr/share/dict/words
+secret=`cat $DICTIONARY | grep '.\{5,\}' | sort -R | head -1 | tr A-Z a-z`
 
 while :
 do
