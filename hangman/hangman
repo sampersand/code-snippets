@@ -1,43 +1,35 @@
-#!zsh
-emulate sh
+#!/bin/dash
 
-set -e
 
-secret=`cat ${DICTIONARY-/usr/share/dict/words} | grep '.\{5,\}' | sort -R | head -1`
+# set -e
+set -uf
 
-secret='saucerless'
-guesses=''
-# exec <<<$'sacxyznm'
-# exec <<<$'sauceQrless'
 alias space="sed 's/./& /g'"
+alias chars='wc -c'
+secret=`cat ${DICTIONARY-/usr/share/dict/words} | grep '.\{5,\}' | sort -R | head -1`
+secret='saucerless'
+guesses=
 
-for (( i=0;i<100;i++ )) do
+while :
+do
 	## Print the hangman
 	bad=`echo $guesses | sed s/[$secret]//g`
-	nerr=`echo -n $bad | wc -c`
-	set -
-	# hm=`echo 'o|/\/\xx' | cut -c$((nerr + 1))-`
-	# p "$hm"
-	test $nerr -ge 1 && set $@ o
-	test $nerr -ge 2 && set $@ \|
-	test $nerr -ge 3 && set $@ /
-	test $nerr -ge 4 && set $@ \\
-	test $nerr -ge 5 && set $@ /
-	test $nerr -ge 6 && set $@ \\
-	test $nerr -ge 7 && set $@ x
-	test $nerr -ge 8 && set $@ x
-	test $nerr -ge 9 && {
-		echo >&2 oops, you didnt guess it! The word was $secret!
-		exit 5
-	}
+	nerr=`expr \`echo $bad | chars\` - 1`
+	set -- # No idea why this needs to be here, but if i remove it we fail.
+	set - `echo 'o|/\/\xx@' | { test $nerr -gt 0 && cut -c-$nerr; } | space`
+	if test $# -ge 9
+	then
+		>&2 echo oops, you didnt guess it! The word was $secret!
+		exit 2
+	fi
 	while test $# -lt 6; do set "$@" ' '; done
 	while test $# -le 8; do set "$@" '-'; done
 
-	# print '\ec\e[3J' ;
+	echo '\033c\033[3J'
 	echo ' .---.'
 	echo " |   $1"
 	echo " |  $3$2$4     `echo $bad | cut -c-4 | space`"
-	echo " |  $5 $6     ` echo $bad | cut -c5- | space`"
+	echo " |  $5 $6     ` echo $bad | cut -c5- | space # leading space needed`"
 	echo "-+--$7-$8---"
 	echo $secret | sed s/[^@$guesses]/_/g | space
 
@@ -54,11 +46,13 @@ for (( i=0;i<100;i++ )) do
 	guesses=$guesses$char
 
 	## If the guess is correct, then print and exit
-	if test x == x`echo $secret | sed "s/[$guesses]//g"`
-	then break
+	if test x = x`echo $secret | sed "s/[$guesses]//g"`
+	then
+		break
 	fi
 done
 
-echo You win! the word was: $secret, and you \\c
-echo had `echo "$guesses\c" | sed "s/[$secret]//g" | wc -c` mistake\(s\)
-exit 0
+cat <<EOS
+You win!
+The word was: $secret
+You had `expr \`echo -n $guesses | sed s/[$secret]//g | chars\`` mistake(s)
