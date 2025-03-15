@@ -47,6 +47,7 @@ do
 	fi
 done
 
+# NOTE: No trailing `EOS` is intentional, dash accepts that lolol
 cat <<EOS
 You win!
 The word was: $secret

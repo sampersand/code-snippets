@@ -14,7 +14,7 @@ while (( 1 )) {
 		print >&2 oops, you didn\'t guess it! the word was ${(j::)secret}!
 		exit 1
 	fi
-	print '\ec\e[3J' ; cat <<-EOS ; print
+	tput clear; cat <<-EOS ; print
 	 .---.
 	 |   $1
 	 |  ${3- }${2- }${4- }     $bad[1,4]
@@ -38,7 +38,7 @@ while (( 1 )) {
 
 	## If the guess is correct, then print and exit
 	(( ${#secret:|guesses} )) || {
-		print You win! the word was: ${(j::)secret}, and you had ${#secret:|guesses} mistakes
+		print You win! the word was: ${(j::)secret}, and you had ${#guesses:|secret} mistakes
 		exit 0
 	}
 }
