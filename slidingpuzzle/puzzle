@@ -11,8 +11,7 @@ set movepath = `dirname $0`/move # Path to the `move` script
 
 # Aliases for later uses
 @ foldwith = (2 + 1) * $N # Really is "max length + 1" F(or the spae)
-alias disp 'tput clear; echo $grid | sed "s/\./ /g" | fold -w$foldwith; \
-	echo; echo Arrow keys to move. q to quit; echo $slides slide\(s\) so far'
+alias disp 'tput clear; echo $grid | sed "s/\./ /g" | fold -w$foldwith'
 alias rand 'head -c4 /dev/random | od -An -D'
 alias move 'set grid = (`$movepath \!:1 $grid`)'
 alias getc 'stty raw; set reply = (`dd bs=1 count=1 status=none`); stty -raw'
@@ -37,7 +36,7 @@ set ctrlc = `printf %b \\003` # TODO
 set esc   = `printf %b \\033`
 while ( "$grid" != "$answer" )
 	disp
-	@ slides++
+	echo; echo Arrow keys to move. q to quit; echo $slides slide\(s\) so far
 
 	# Support arrow keys (which are `ESC + [ + A/B/C/D`), along with `q` to quit,
 	# and the "Ctrl+C" character for exiting
@@ -53,6 +52,7 @@ while ( "$grid" != "$answer" )
 		getc; if ( $reply != '[' ) continue
 		getc; if ( $reply !~ [ABCD] ) continue
 		move $reply
+		if ( ! $status ) @ slides++
 	endsw
 end
 
