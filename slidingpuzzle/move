@@ -1,15 +1,16 @@
 #!/bin/csh -f
 
+# The direction is the first argument
 set dir = $1
 shift
 
+# Find the index of the blank space
 @ idx = 1
 while ( $argv[$idx] !~ *_ )
   @ idx++
 end
 @ idx -- # B/c the algorithm expects it
 
-@ other = -1
 switch ($dir)
 case A: # A is up
   if ( $idx >= $N ) @ other = $idx - $N
@@ -28,13 +29,18 @@ default:
   exit 1
 endsw
 
-if ( $other != -1 ) then
+# If a direction was found, then flip things
+if ( $?other ) then
+  # Increment b/c CSH uses 1-based indices
   @ other++
   @ idx++
-  set tmp = $argv[$other]
+  set tmp          = $argv[$other]
   set argv[$other] = $argv[$idx]
-  set argv[$idx] = $tmp
+  set argv[$idx]   = $tmp
 endif
 
+# Print out the grid regardless of what's been moved.
 echo $argv
-exit ( $other == -1 ) # Exit nonzero if we actually set something
+
+# Exit nonzero if we actually set something
+exit ! $?other
