@@ -1,0 +1,59 @@
+#!/bin/csh -f
+
+onintr reset_tty
+tput civis
+
+# Prepend cwd path
+if ( $#argv < 1 ) set argv = ( 4 )
+setenv N $argv[1]
+set movepath  = `dirname $0`/move
+set ctrlc = `printf %b \\003` # TODO
+set esc   = `printf %b \\033`
+
+@ foldwith = (2 + 1) * $N # Really is "max length + 1" F(or the spae)
+alias disp 'tput clear; echo $grid | sed "s/\./ /g" | fold -w$foldwith'
+alias rand 'head -c4 /dev/random | od -An -D'
+alias move 'set grid = (`$movepath \!:1 $grid`)'
+alias getc 'stty raw; set reply = (`dd bs=1 count=1 status=none`); stty -raw'
+
+# Create the grid
+@ maxlen = $N * $N - 1
+set grid = (`seq -w 1 $maxlen | sed 's/^0/./'` __)
+set answer = ( $grid )
+
+# Shuffle the grid
+@ iters = $N * $N * $N
+set directions = (A B C D)
+while ( $iters )
+	@ diridx = `rand` % $#directions + 1
+	move $directions[$diridx] || continue
+	@ iters --
+end
+
+@ slides = 0
+while ( "$grid" != "$answer" )
+	@ slides++
+	disp
+
+	getc
+	switch ( $reply )
+	case q:
+	case ${ctrlc}:
+		exit
+	case ${esc}:
+		getc; if ( $reply != '[' ) continue
+		getc; if ( $reply !~ [ABCD] ) continue
+		move $reply
+		breaksw
+	endsw
+end
+
+tput reset
+echo
+disp
+echo Congrats, you win! it took you: $slides slides!
+exit
+
+# Restore TTY
+reset_tty:
+tput reset

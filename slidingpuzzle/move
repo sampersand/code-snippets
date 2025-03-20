@@ -1,0 +1,40 @@
+#!/bin/csh -f
+
+set dir = $1
+shift
+
+@ idx = 1
+while ( $argv[$idx] !~ *_ )
+  @ idx++
+end
+@ idx -- # B/c the algorithm expects it
+
+@ other = -1
+switch ($dir)
+case A: # A is up
+  if ( $idx >= $N ) @ other = $idx - $N
+  breaksw
+case B: # B is down
+  if ( $idx < $N * ($N - 1) ) @ other = $idx + $N
+  breaksw
+case D: # D is left
+  if ( $idx % $N ) @ other = $idx - 1
+  breaksw
+case C: # C is right
+  if ( ($idx + 1) % $N ) @ other = $idx + 1
+  breaksw
+default:
+  echo invalid direction: $dir > /dev/stderr
+  exit 1
+endsw
+
+if ( $other != -1 ) then
+  @ other++
+  @ idx++
+  set tmp = $argv[$other]
+  set argv[$other] = $argv[$idx]
+  set argv[$idx] = $tmp
+endif
+
+echo $argv
+exit ( $other == -1 ) # Exit nonzero if we actually set something
