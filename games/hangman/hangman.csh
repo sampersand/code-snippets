@@ -1,37 +1,63 @@
-#!/bin/tcsh -f
-
+#!/bin/csh -f
+#
 alias space "sed 's/./& /g'"
 alias chars 'wc -c'
+#
+if ( ! $?DICTIONARY ) then
+    set DICTIONARY = /usr/share/dict/words
+endif
 
-if ( ! $?DICTIONARY ) set DICTIONARY = /usr/share/dict/words
-set secret = ( `cat $DICTIONARY | grep '.\{5,\}' | sort -R | head -1 | tr A-Z a-z | sed "s/./& /g"` )
-
-set secret = (p e r c e p t i v i t y)
-set guesses = (e q v i)
-
+set secret = `cat $DICTIONARY | grep '.\{5,\}' | sort -R | head -1 | tr A-Z a-z`
 echo $secret
 
-# Initialize an empty array to store the intersection
-set intersection = ()
-
-# Loop through each element of secret
-foreach item1 ($secret)
-    # Check if the element exists in guesses
-    if ( $item1 =~ $guesses ) then
-    	echo $item1
-        # Add the element to the intersection array
-        set intersection = ($intersection $item1)
-    endif
-end
-
-# Print the intersection array
-echo "Intersection: $intersection"
-
-
-# exit
-
-# 	## Print the hangman
-# 	bad=`echo $guesses | sed s/[$secret]//g`
-# 	nerr=`expr \`echo $bad | chars\` - 1`
-
-# echo $secret
+set guesses = ( a b c )
+set bad = ( `echo $guesses | sed "s/[$secret]//g"` )
+echo $bad
+#
+# while :
+# do
+#     ## Print the hangman
+#     bad=`echo $guesses | sed 's/[$secret]//g'`
+#     nerr=`expr \`echo $bad | chars\` - 1`
+#     set -- # No idea why this needs to be here, but if i remove it we fail.
+#     set - `echo 'o|/\/\xx@' | { test $nerr -gt 0 && cut -c-$nerr; } | space`
+#     if test $# -ge 9
+#     then
+#         >&2 echo oops, you didnt guess it! The word was $secret!
+#         exit 2
+#     fi
+#     while test $# -lt 6; do set "$@" ' '; done
+#     while test $# -le 8; do set "$@" '-'; done
+#
+#     echo '\033c\033[3J'
+#     echo ' .---.'
+#     echo " |   $1"
+#     echo " |  $3$2$4     `echo $bad | cut -c-4 | space`"
+#     echo " |  $5 $6     ` echo $bad | cut -c5- | space # leading space needed`"
+#     echo "-+--$7-$8---"
+#     echo $secret | sed s/[^@$guesses]/_/g | space
+#
+#     ## Read the word in
+#     while
+#         read char || exit 9
+#         case $char in
+#             [$guesses]) continue 2 ;;
+#             [a-z]) false ;;
+#             *) : ;;
+#         esac
+#     do :; done
+#
+#     guesses=$guesses$char
+#
+#     ## If the guess is correct, then print and exit
+#     if test x = x`echo $secret | sed "s/[$guesses]//g"`
+#     then
+#         break
+#     fi
+# done
+#
+# # NOTE: No trailing `EOS` is intentional, dash accepts that lolol
+# cat <<EOS
+# You win!
+# The word was: $secret
+# You had `expr \`echo -n $guesses | sed s/[$secret]//g | chars\`` mistake(s)

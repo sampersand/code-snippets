@@ -1,4 +1,5 @@
-#
+#!/bin/csh -f
+
 if ( $#argv ) then
 	@ max = $1
 else
