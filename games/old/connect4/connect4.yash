@@ -1,7 +1,0 @@
-#/bin/yash
-#: vi: 
-grid=( `seq 1 25 | sed s/.\*/_/g` )
-echo ${grid[@]}
-
-
-
