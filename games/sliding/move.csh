@@ -9,7 +9,6 @@ shift
 while ( $argv[$idx] !~ *_ )
   @ idx++
 end
-# @ idx -- # B/c the algorithm expects it
 
 switch ($dir)
 case A: # A is up
@@ -25,14 +24,12 @@ case D: # D is left
   if ( ($idx - 1) % $N ) @ other = $idx - 1
   breaksw
 default:
-	warn invalid direction: $dir
+	echo invalid direction: $dir >/dev/stderr
   exit 1
 endsw
 
 # If a direction was found, then flip things
 if ( $?other ) then
-  # Increment b/c CSH uses 1-based indices
-  # @ other++
   set tmp          = $argv[$other]
   set argv[$other] = $argv[$idx]
   set argv[$idx]   = $tmp

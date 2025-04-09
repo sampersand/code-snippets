@@ -8,7 +8,7 @@ stty -echo
 # Set the width of the slide puzzle.
 if ( $#argv < 1 ) set argv = ( 4 )
 setenv N $argv[1]                # Env var so `move` can access it.
-set movepath = `dirname $0`/move # Path to the `move` script
+set movepath = `dirname $0`/move.csh # Path to the `move` script
 
 # Aliases for later uses
 @ foldwith = (2 + 1) * $N # Really is "max length + 1" F(or the spae)
