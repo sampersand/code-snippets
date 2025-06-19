@@ -1,10 +1,16 @@
-#!zsh
+#!/bin/zsh
 
 set -e
 
 set -A words -- `cat ${DICTIONARY-/usr/share/dict/words} | grep '.\{5,\}'`
 let "rand=`head -c4 /dev/urandom | od -DAn`"
 set -A secret ${(Ls::)words[rand % $#words + 1]}
+
+set -A secret x a b y q
+set -A guesses x y z
+set -A bad ${guesses:|secret}
+p --no-files $bad
+exit
 
 while (( 1 )) {
 	## Print the hangman
